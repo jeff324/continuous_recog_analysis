@@ -1,0 +1,382 @@
+---
+title: "Continuous Recognition Results"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+```
+
+
+```{r set-options,fig.width=5,fig.height=5,message=FALSE, warning=FALSE}
+options(width=120)
+library(afex)
+library(ggplot2)
+base_dir = 'C:/Users/Jeffrey/Dropbox/backup/Research Projects/Continuous Recognition/DataAnalysis/2-9-2016/'
+source(paste(base_dir,'graphs/smry.R',sep=''))
+source(paste(base_dir,'graphs/multiplot.R',sep=''))
+load(paste(base_dir,'agg_data/agg_dprime.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_hit.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_fa.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_hit_overall.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_hit_lag.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_age.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_rt.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_rt_overall.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_novice_hit_2.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_novice_fa_2.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_dprime_lag.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_bias.RData',sep=''))
+load(paste(base_dir,'agg_data/agg_dprime_lag_only.RData',sep=''))
+load('C:/Users/Jeffrey/Dropbox/backup/Research Projects/Continuous Recognition/DataAnalysis/2-9-2016/data/raw_data.RData')
+
+mytheme = theme(axis.line = element_line(colour = "black"),
+           axis.text = element_text(colour = "black"),
+           panel.grid.major = element_blank(),
+           panel.grid.minor = element_blank(),
+           strip.background = element_blank(),
+           panel.border = element_rect(color='black',fill=NA),
+           panel.background = element_blank())
+
+
+
+
+##### hr ~ lag x category #####
+dat_exp = summarySE(agg_hit,measurevar = 'hit',groupvars=c('lag','category'))
+dat_exp$lag = as.factor(dat_exp$lag)
+ggplot(dat_exp, aes(x=lag, y=hit,colour=category,group=category)) + 
+     scale_color_discrete(name='Category',labels=c('car'='Car','bird'='Bird')) +
+     geom_errorbar(aes(ymin=hit-ci, ymax=hit+ci), width=.1) +
+     geom_line() +
+     geom_point() +
+     scale_y_continuous(limits=c(0.5,1)) +
+     geom_point(size=4) +
+     xlab('Lag') +
+     ylab("P(Hit)") +
+     mytheme
+
+print('Experts')
+ez.glm(dv = 'hit',
+       id = 'subj_num',
+       data = agg_hit,
+       within = c('category','lag'))
+
+print('Simple Effects')
+t.test(agg_hit$hit[agg_hit$lag==2 & agg_hit$category=='bird'], 
+       agg_hit$hit[agg_hit$lag==16 & agg_hit$category=='bird'],paired=T)
+t.test(agg_hit$hit[agg_hit$lag==2 & agg_hit$category=='car'], 
+       agg_hit$hit[agg_hit$lag==16 & agg_hit$category=='car'],paired=T)
+print('Means')
+print(dat_exp)
+summarySE(agg_hit_overall,measurevar = 'hit', groupvars = 'category')
+summarySE(agg_hit_lag,measurevar = 'hit', groupvars = 'lag')
+
+#####d' ~ lag x category #####
+dat_exp = summarySE(agg_dprime_lag,measurevar = 'dprime',groupvars=c('lag','category'))
+dat_exp$lag = as.factor(dat_exp$lag)
+ggplot(dat_exp, aes(x=lag, y=dprime,colour=category,group=category)) + 
+     scale_color_discrete(name='Category',labels=c('car'='Car','bird'='Bird')) +
+     geom_errorbar(aes(ymin=dprime-ci, ymax=dprime+ci), width=.1) +
+     geom_line() +
+     geom_point() +
+     geom_point(size=4) +
+     xlab('Lag') +
+     ylab("d\'") +
+     mytheme
+
+print('Experts')
+
+ez.glm(dv = 'dprime',
+       id = 'subj_num',
+       data = agg_dprime_lag,
+       within = c('category','lag'))
+
+summarySE(agg_dprime,measurevar = 'dprime',groupvars=c('category'))
+summarySE(agg_dprime_lag_only,measurevar = 'dprime',groupvars=c('lag'))
+
+
+#### experts only: fa ~ category ####
+dat_exp = summarySE(agg_fa,measurevar = 'fa',groupvars=c('category'))
+ggplot(dat_exp, aes(x=category, y=fa)) +
+     geom_bar(stat = 'identity',color='black') +
+     scale_x_discrete(name='Category',labels=c('bird'='Bird','car'='Car')) +
+     geom_errorbar(aes(ymin=fa-ci, ymax=fa+ci), width=.1) +
+     xlab('Category') +
+     ylab("P(FA)") +
+     mytheme
+
+print('Experts')
+print(dat_exp)
+t.test(agg_fa$fa[agg_fa$category=='bird'],agg_fa$fa[agg_fa$category=='car'],paired=T)
+
+
+#### d' ~ delta_d x lag x category ####
+ggplot(agg_dprime_lag, aes(x=delta_dprime, y=dprime, color=category)) + 
+     geom_point(shape=1) +
+     scale_colour_hue(l=50,name='Category',labels=c('bird'='Bird','car'='Car')) + 
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Expertise Index') +
+     ylab("d\'") +
+     facet_grid(.~lag,labeller=labeller(lag=c('2'='Lag 2','16'='Lag 16'))) +
+     mytheme
+
+agg_dprime_lag$delta_dprime_centered = scale(agg_dprime_lag$delta_dprime, scale = F)
+agg_dprime_lag$age = scale(agg_dprime_lag$age, scale = F)
+ez.glm(dv = 'dprime',
+       id = 'subj_num',
+       data = agg_dprime_lag,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return = 'Anova')
+
+        
+print('simple lm birds')
+summary(lm(dprime ~ delta_dprime, data = agg_dprime[agg_dprime$category=='bird',]))
+
+print('simple lm cars')
+summary(lm(dprime ~ delta_dprime, data = agg_dprime[agg_dprime$category=='car',]))
+
+#####hr ~ delta_d x lag x category ####
+ggplot(agg_hit, aes(x=delta_dprime, y=hit, color=category)) + geom_point(shape=1) +
+     scale_colour_hue(l=50,name='Category',labels=c('bird'='Bird','car'='Car')) + 
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Expertise Index') +
+     ylab("P(Hit)") +
+     facet_grid(.~lag,labeller = labeller(lag=c('2'='Lag 2','16'='Lag 16'))) +
+     mytheme
+
+agg_hit$delta_dprime_centered = scale(agg_hit$delta_dprime,scale=F)
+agg_hit$age = scale(agg_hit$age,scale=F)
+ez.glm(dv = 'hit',
+       id = 'subj_num',
+       data = agg_hit,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return='nice')
+#have not figured out how to get sig digits with only one table!!! 
+ez.glm(dv = 'hit',
+       id = 'subj_num',
+       data = agg_hit,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return='Anova')
+
+print('simple lm birds')
+summary(lm(hit ~ delta_dprime, data = agg_hit_overall[agg_hit_overall$category=='bird',]))
+
+print('simple lm cars')
+summary(lm(hit ~ delta_dprime, data = agg_hit_overall[agg_hit_overall$category=='car',]))
+
+#### far ~ delta_d x category ####
+ggplot(agg_fa, aes(x=delta_dprime, y=fa, color=category)) + geom_point(shape=1) +
+     scale_colour_hue(l=50,name='Category',labels=c('bird'='Bird','car'='Car')) + 
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Expertise Index (delta d\')') +
+     ylab("P(False Alarm)") +
+     mytheme
+
+agg_fa$delta_dprime_centered = scale(agg_fa$delta_dprime,scale=F)
+agg_fa$age = scale(agg_fa$age,scale=F)
+ez.glm(dv = 'fa',
+       id = 'subj_num',
+       data = agg_fa,
+       within = 'category',
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return = 'Anova')
+
+print('simple lm')
+summary(lm(fa ~ delta_dprime, data = aggregate(fa ~ subj_num * delta_dprime,agg_fa,mean))) 
+
+#### rt ~ lag x acc x category####
+dat = summarySE(agg_rt[agg_rt$tarfoil_int==1,],measurevar = 'rt',groupvars=c('lag','category','acc'))
+dat$lag = as.factor(dat$lag)
+ggplot(dat, aes(x=lag, y=rt,colour=category,group=category)) + 
+     scale_color_discrete(name='Category',labels=c('bird'='Bird','car'='Car')) +
+     geom_errorbar(aes(ymin=rt-ci, ymax=rt+ci), width=.1) +
+     geom_line() +
+     geom_point() +
+     geom_point(size=4) +
+     facet_grid(.~acc,labeller=labeller(acc=c('0'='Miss','1'='Hit'))) +
+     xlab('Lag') +
+     ylab("Median RT") +
+     mytheme
+
+print("Hit RT")
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt[agg_rt$tarfoil_int==1 & agg_rt$acc==1,],
+       within = c('category','lag'),
+       return='Anova')
+agg_temp = aggregate(rt ~ subj_num * lag, agg_rt[agg_rt$tarfoil_int==1 & agg_rt$acc==1,], median)
+summarySE(agg_temp,measurevar = 'rt',groupvars = c('lag'))
+
+print("Miss RT")
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt[agg_rt$tarfoil_int==1 & agg_rt$acc==0,],
+       within = c('category','lag'),
+       return='Anova')
+agg_temp = aggregate(rt ~ subj_num * lag, agg_rt[agg_rt$tarfoil_int==1 & agg_rt$acc==0,], median)
+summarySE(agg_temp,measurevar = 'rt',groupvars = c('lag'))
+agg_temp = aggregate(rt ~ subj_num * category, agg_rt[agg_rt$tarfoil_int==1 & agg_rt$acc==0,], median)
+summarySE(agg_temp,measurevar = 'rt',groupvars = c('category'))
+
+#### fa_rt ~ category x acc ####
+
+dat = summarySE(agg_rt_overall[agg_rt_overall$tarfoil_int==0,],
+                measurevar = 'rt',groupvars=c('category','acc'))
+ggplot(dat, aes(x=category, y=rt)) +
+     scale_x_discrete(name='Category',labels=c('bird'='Bird','car'='Car')) +
+     geom_bar(stat = 'identity') +
+     geom_errorbar(aes(ymin=rt-ci, ymax=rt+ci), width=.1) +
+     xlab('Category') +
+     ylab("Average Median RT") +
+     facet_grid(.~acc,labeller=labeller(acc=c('0'='False Alarms','1'='Correct Rejections'))) +
+     mytheme
+
+print("False Alarm RT")
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_overall[agg_rt_overall$tarfoil_int==0
+                             & agg_rt_overall$acc==0,],
+       within = c('category'),
+       return='Anova')
+
+summarySE(agg_rt_overall[agg_rt_overall$tarfoil_int==0
+                             & agg_rt_overall$acc==0,],measurevar = 'rt',groupvars = c('category'))
+
+
+print("Correct Rejection RT")
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_overall[agg_rt_overall$tarfoil_int==0
+                             & agg_rt_overall$acc==1,],
+       within = c('category'),
+        return='Anova')
+
+summarySE(agg_rt_overall[agg_rt_overall$tarfoil_int==0
+                             & agg_rt_overall$acc==1,],measurevar = 'rt',groupvars = c('category'))
+
+##### hit_rt ~ delta_d x lag x acc ####
+agg_rt_lag = agg_rt[agg_rt$tarfoil_int=='1',]
+ggplot(agg_rt_lag, aes(x=delta_dprime, y=rt,colour=category)) + geom_point(shape=1) +
+     scale_colour_hue(l=50,name='Category',labels=c('bird'='Bird','car'='Car')) +
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Expertise Index') +
+     ylab("Average Median RT") +
+     facet_grid(acc~lag,labeller=labeller(lag=c('2'='Lag 2','16'='Lag 16'),
+                                          acc=c('0'='Miss','1'='Hit'))) +
+     mytheme
+
+agg_rt_lag_cor = agg_rt_lag[agg_rt_lag$acc==1,]
+agg_rt_lag_cor$delta_dprime_centered = scale(agg_rt_lag_cor$delta_dprime,scale=F)
+agg_rt_lag_cor$age = scale(agg_rt_lag_cor$age,scale=F)
+print('Hit RT')
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_lag_cor,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+        return='Anova')
+
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_lag_cor,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+        return='nice')
+
+agg_temp = aggregate(rt ~ subj_num * age * acc * tarfoil_int, data, median)
+summary(lm(rt ~ age, data = agg_temp[agg_temp$acc==1 & agg_temp$tarfoil_int==1,])) 
+
+
+agg_rt_lag_err = agg_rt_lag[agg_rt_lag$acc==0,]
+agg_rt_lag_err$delta_dprime_centered = scale(agg_rt_lag_err$delta_dprime,scale=F)
+print('Miss RT')
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_lag_err,
+       within = c('category','lag'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+        return='Anova')
+
+agg_temp = aggregate(rt ~ subj_num * age * acc * tarfoil_int, data, median)
+summary(lm(rt ~ age, data = agg_temp[agg_temp$acc==0 & agg_temp$tarfoil_int==1,])) 
+
+#### fa_rt ~ delta_d x category
+agg_rt_foils = agg_rt_overall[agg_rt_overall$tarfoil_int=='0',]
+ggplot(agg_rt_foils, aes(x=delta_dprime, y=rt,colour=category)) + geom_point(shape=1) +
+     scale_colour_hue(l=50,name='Category',labels=c('bird'='Bird','car'='Car')) + 
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Expertise Index') +
+     ylab("Median RT") +
+     facet_grid(.~acc,labeller=labeller(acc=c('0'='False Alarms','1'='Correct Rejections'))) +
+     mytheme
+
+agg_rt_foils$delta_dprime_centered = scale(agg_rt_foils$delta_dprime,scale=F)
+agg_rt_foils$age = scale(agg_rt_foils$age,scale=F)
+print('False Alarm RT')
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_foils[agg_rt_foils$tarfoil_int==0
+                           & agg_rt_foils$acc==0,],
+       within = c('category'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return='Anova')
+
+print('Correct Rejction RT')
+ez.glm(dv = 'rt',
+       id = 'subj_num',
+       data = agg_rt_foils[agg_rt_foils$tarfoil_int==0
+                           & agg_rt_foils$acc==1,],
+       within = c('category'),
+       covariate = c('delta_dprime_centered','age'),
+       factorize = FALSE,
+       return = 'Anova')
+
+summary(lm(rt ~ age + delta_dprime_centered, data = aggregate(rt ~ subj_num * age * 
+                                                                   delta_dprime_centered, 
+                                      agg_rt_foils[agg_rt_foils$tarfoil_int==0
+                                      & agg_rt_foils$acc==1,], mean))) 
+
+
+
+#### delta_d ~ age ####
+ggplot(agg_age, aes(x=age, y=delta_dprime)) + geom_point(shape=1) +
+     scale_colour_hue(l=50) + # Use a slightly darker palette than normal
+     geom_smooth(method=lm,   # Add linear regression lines
+                 se=FALSE,    # Don't add shaded confidence region
+                 fullrange=TRUE) + # Extend regression lines
+     xlab('Age') +
+     ylab("Expertise Index (delta d\')") +
+     mytheme
+
+cor.test(agg_age$age,agg_age$delta_dprime)
+
+
+
+
+
+
+```
+
+
+
